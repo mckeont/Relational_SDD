@@ -68,7 +68,7 @@ Repeat the above QGIS step with Pennsylvania census tract data. You have the opt
 <li><strong>Chemical</strong>: Contains information about the chemical released such as its classifcation, carcinogen status, metal status, clean air act chemical status, and cas compound identifier.</li>
 <li><strong>Type</strong>:  Contains information about the type of release such as air, water, underground, and surface.</li>
 </ol>
-<p>The following image shows how the tables are connected. The entity connections use a crows feet convention, which can be further reviewed in <a href="http://lucidchart.com">lucidchart.com</a>.</p>
+<p>The following image shows and Entity-Relationship-Diagram (ERD) of how the tables are connected. The entity connections use a crows feet convention, which can be further reviewed in <a href="http://lucidchart.com">lucidchart.com</a>.</p>
 <p><img src="https://github.com/mckeonttemple/images/blob/gh-pages/ERD_McKeon.png?raw=true" alt="enter image description here"></p>
 <h2 id="creating-tables-in-dbeaver">Creating Tables in DBeaver</h2>
 <p>The following SQL script inputs the tables described above into DBeaver. Once created, we are ready to begin asking our spatial queries!</p>
@@ -406,7 +406,20 @@ Perhaps you may be interested in knowing which  TRI emissions are near a census 
 </code></pre>
 <p><img src="https://github.com/mckeonttemple/images/blob/gh-pages/SQ4_fullextent.png?raw=true" alt="enter image description here"><br>
 <img src="https://github.com/mckeonttemple/images/blob/gh-pages/SQ4_zoomed.png?raw=true" alt="enter image description here"></p>
-<h3 id="i-hope-you-enjoyed-this-tutorial">I hope you enjoyed this tutorial!</h3>
+<h2 id="improving-query-optimization">Improving Query Optimization</h2>
+<p>Fortunately, these datasets are relatively small in the cosmic universe of spatial information. However, you may encounter datasets with hundreds of millions of rows, or you may ask complicated queries which take a lot of computing power to read and write operations. The KNN operator for the fourth query could generate a massive output if no limits were set.  To optimize you may want to  construct an index or denormalize the data.  If you find that the time it takes to execute a query takes a long time ( could be minutes), then you may want to create an index or denormalize.</p>
+<h3 id="index-construction">Index Construction</h3>
+<p>There are tools available online like SQL Profiler  which can help you identify queries which are peforming at suboptimal levels:</p>
+<blockquote>
+<p><a href="https://www.sqlmvp.org/sql-server-profiler-trace/">https://www.sqlmvp.org/sql-server-profiler-trace/</a></p>
+</blockquote>
+<p>Either, way an index allows a query to search for data quickly by searching an index (part of the table) rather than the entire dataset.  To construct an index you’ll follow the following format:</p>
+<pre class=" language-sql"><code class="prism  language-sql"><span class="token keyword">create</span> <span class="token keyword">index</span> index_name 
+<span class="token keyword">on</span> table_name<span class="token punctuation">(</span>column_to_index<span class="token punctuation">)</span><span class="token punctuation">;</span>
+</code></pre>
+<h3 id="denormalization">Denormalization</h3>
+<p>The ERD shown earlier shows how the TRI data have been normalized into five tables. The purpose of this is to reduce redundancy and eliminate deletion and insertion errors.  However you may want to minimize invoking several joins to get to a certain attribute. You may have noticed that the geom is only found in the facility table. You may not want to always include the facility table in your queries. However at the moment, you cannot avoid joining to it if you want to access the geom. Go ahead and try adding the GEOM field to the other four TRI tables, then get on out there and create some new queries!</p>
+<h2 id="i-hope-you-enjoyed-this-tutorial">I hope you enjoyed this tutorial!</h2>
 <p>Tom McKeon, MPH</p>
 </div>
 </body>
