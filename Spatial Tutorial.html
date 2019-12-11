@@ -1,0 +1,369 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome file</title>
+  <link rel="stylesheet" href="https://stackedit.io/style.css" />
+</head>
+
+<body class="stackedit">
+  <div class="stackedit__html"><h2 id="designing-a-relational-database-for-spatial-querying-using-postgressql-with-postgis">Designing a Relational Database for Spatial Querying using PostgresSQL with PostGIS</h2>
+<p>Authored by: Tom McKeon, MPH</p>
+<p>This tutorial is meant to provide an example of how to design a relational spatial database for spatial querying by using freely available resources. All you will need is a computer, an internet connection, and some patience.</p>
+<p>For this exercise, we will use point-level data from the US- EPA’s Toxic Release Inventory Program ( TRI ) and join it by spatial location to polygon-level census tract boundaries from <a href="http://census.gov">census.gov</a>.  QGIS and DBeaver will be used to manage the data. LucidCharts will help us easily sketch an Entity-Relationship Diagram. PostgresSQL with the PostGIS extension will be used to write code to process and analyze these data.</p>
+<p>The TRI  Program contains information about chemical releases from industrial and federal facilities. The data contains information about each chemical release’s:</p>
+<ul>
+<li>Facility name, address, latitude and longitude coordinates, and industry sector codes</li>
+<li>Chemical identification and classification information</li>
+<li>Quantities of chemicals released on site at the facility</li>
+<li>Quantities of chemicals transferred to Publicly Owned Treatment Works (POTWs)</li>
+<li>Quantities of chemicals transferred off site to other locations for release/disposal and further waste management</li>
+<li>Quantities of chemicals managed through disposal, energy recovery, recycling and treatment; non-production-related waste quantities; production/activity ratio</li>
+</ul>
+<p>Documentation about the TRI attributes may be further reviewed here: <a href="https://www.epa.gov/toxics-release-inventory-tri-program/tri-basic-data-files-guide">https://www.epa.gov/toxics-release-inventory-tri-program/tri-basic-data-files-guide</a></p>
+<p>Annual .csv data files for Pennsylvania TRIs can be manually downloaded here: <a href="https://www.epa.gov/toxics-release-inventory-tri-program/tri-basic-data-files-calendar-years-19872018">https://www.epa.gov/toxics-release-inventory-tri-program/tri-basic-data-files-calendar-years-19872018</a><br>
+To follow along in this tutorial, download data for years 1987 to 2018.</p>
+<p>Once downloaded, open Command Prompt and go to the folder where all the .csv files were downloaded.  Make sure all the .csv files are downloaded into the same folder.  Once you’re in the correct folder path, use the following code to combine all the .csv files into one (note I named the combined file as “TRI_PA_1987_2018_all_zips.csv”:</p>
+<pre><code>copy *.csv TRI_PA_1987_2018_all_zips.csv
+</code></pre>
+<p>Next you will need to download QGIS, a freely available geographic information system, downloadable here: <a href="https://qgis.org/en/site/forusers/download.html">https://qgis.org/en/site/forusers/download.html</a></p>
+<p>QGIS will allow us to convert the  combined .csv file into a data format with queryable spatial geometries. This can be done  by invoking the following commands:</p>
+<p><strong>Add Vector Layer</strong>  &gt; <strong>Add Delimited Text Layer</strong> &gt;&gt; import .csv file and designate it as  <strong>Point Coordinates</strong> under the <strong>Geometry Definition</strong> section.</p>
+<p>Once completed,  you should now see a visualization of all 143,436 points in this Pennsylvania TRI dataset:<br>
+<img src="https://github.com/mckeonttemple/images/blob/gh-pages/tri_mark2.png?raw=true" alt="enter image description here"><br>
+Repeat the above QGIS step with Pennsylvania census tract data. You have the option of importing a Shapefile instead of a .csv file using the following link: <a href="https://catalog.data.gov/dataset/tiger-line-shapefile-2016-state-pennsylvania-current-census-tract-state-based">https://catalog.data.gov/dataset/tiger-line-shapefile-2016-state-pennsylvania-current-census-tract-state-based</a><br>
+A shapefile is a common spatial data format which you may encounter when working with other datasets.  If you download the shapefile, you will have a zipped folder containing several files. Keep this folder zipped.  In QGIS go to <strong>Add Vector Layer</strong>  &gt; browse for the zipped folder, select it, and import it.</p>
+<p>Once completed, you should see the 3,218 census tracts which make up Pennsylvania.</p>
+<p><img src="https://github.com/mckeonttemple/images/blob/gh-pages/pa_census_tracts.png?raw=true" alt="enter image description here"></p>
+<p>Next setup DBeaver, a SQL client and database administration tool which we will use to manage the TRI data and create entity-relationship tables.  DBeaver is freely available through the following link:  <a href="http://dbeaver.io">dbeaver.io</a></p>
+<p>Once DBeaver is setup, create a new database connection to PostgresSQL. PostgreSQL is a powerful open source object-relational database system which uses SQL as its coding language.  The first thing you’ll want to do is add the PostGIS extension. PostGIS is an open source software program that adds support for geographic objects to the PostgreSQL object-relational database.</p>
+<p>To do this, type the following code into DBeaver’s text editor:</p>
+<pre class=" language-sql"><code class="prism  language-sql"><span class="token keyword">create</span> extension postgis<span class="token punctuation">;</span>
+</code></pre>
+<p>You can read more about PostGIS functions here: <a href="http://postgis.net/workshops/postgis-intro/">postgis.net/workshops/postgis-intro/</a></p>
+<p>Great! Next we’ll want to connect our newly created spatial data, stored in QGIS to DBeaver.</p>
+<p>In order to do this, a new schema needs to first be created in DBeaver. Do this by right-clicking in the database navigator and choosing <strong>create</strong> &gt; <strong>schema</strong> then naming it something relevant. Once created, go back to QGIS and connect to the schema by connecting to DB Manager under the database tab. You should now have your data in DBeaver.</p>
+<p>Next, we will have to normalize our TRI data. The data comes with over 110 fields, many of which can be calculated through spatial querying.  For this tutorial, the TRI data was normalized into five entity-relationship tables, each containing a primary key for unique entries, as well as foriegn keys to connect to other tables’ primary keys. <a href="http://LucidChart.com">LucidChart.com</a> can be used to diagram these tables. The list below describes these tables in further detail.</p>
+<ol>
+<li><strong>Facility</strong>: Contains facility location information,  geometries, address, name, and TRI emission identifier.</li>
+<li><strong>Company</strong>: Contains parent company information, NAICS and SIC information.</li>
+<li><strong>Release</strong>: Contains emission release quantity, unit of measure, year, industry code, and form type.</li>
+<li><strong>Chemical</strong>: Contains information about the chemical released such as its classifcation, carcinogen status, metal status, clean air act chemical status, and cas compound identifier.</li>
+<li><strong>Type</strong>:  Contains information about the type of release such as air, water, underground, and surface.</li>
+</ol>
+<p>The following image shows how the tables are connected. The entity connections use a crows feet convention, which can be further reviewed in <a href="http://lucidcharts.com">lucidcharts.com</a>.</p>
+<p><img src="https://github.com/mckeonttemple/images/blob/gh-pages/ERD_McKeon.png?raw=true" alt="enter image description here"></p>
+<h2 id="creating-tables-in-dbeaver">Creating Tables in DBeaver</h2>
+<p>The following SQL script inputs the tables described above into DBeaver. Once created, we are ready to begin asking our spatial queries!</p>
+<pre class=" language-sql"><code class="prism  language-sql"><span class="token comment">-- set the path and rename the tri table</span>
+<span class="token keyword">set</span> search_path <span class="token keyword">to</span> tri_pa_1987_2018<span class="token punctuation">,</span> <span class="token keyword">public</span><span class="token punctuation">;</span>
+<span class="token keyword">alter</span> <span class="token keyword">table</span> tri_pa_1987_2018<span class="token punctuation">.</span><span class="token string">"TRI_PA_1987_2018_all_zips"</span>
+<span class="token keyword">rename</span> <span class="token keyword">to</span> tri_pa_1987_2018<span class="token punctuation">;</span>
+
+<span class="token keyword">select</span> <span class="token function">count</span><span class="token punctuation">(</span><span class="token operator">*</span><span class="token punctuation">)</span> 
+<span class="token keyword">from</span> tri_pa_1987_2018<span class="token punctuation">;</span>
+
+<span class="token comment">--create the company table</span>
+<span class="token keyword">drop</span> <span class="token keyword">table</span> <span class="token keyword">if</span> <span class="token keyword">exists</span> company <span class="token keyword">cascade</span><span class="token punctuation">;</span>
+<span class="token keyword">create</span> <span class="token keyword">table</span> company <span class="token punctuation">(</span>
+  company_id <span class="token keyword">serial</span> <span class="token keyword">primary</span> <span class="token keyword">key</span><span class="token punctuation">,</span>
+  parent_co_name <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+  parent_co_db_num <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+  primary_naics <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+  naics2 <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+  naics3 <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+  naics4 <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+  naics5 <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+  naics6 <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+  primary_sic <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+  sic2 <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+  sic3 <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+  sic4 <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+  sic5 <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+  sic6 <span class="token keyword">varchar</span>
+  <span class="token punctuation">)</span><span class="token punctuation">;</span>
+  
+<span class="token keyword">insert</span> <span class="token keyword">into</span> company <span class="token punctuation">(</span>parent_co_name<span class="token punctuation">,</span> 
+parent_co_db_num<span class="token punctuation">,</span> primary_naics<span class="token punctuation">,</span> naics2<span class="token punctuation">,</span> naics3<span class="token punctuation">,</span> naics4<span class="token punctuation">,</span> 
+naics5<span class="token punctuation">,</span> naics6<span class="token punctuation">,</span> primary_sic<span class="token punctuation">,</span> sic2<span class="token punctuation">,</span> sic3<span class="token punctuation">,</span> sic4<span class="token punctuation">,</span> sic5<span class="token punctuation">,</span> sic6<span class="token punctuation">)</span>
+<span class="token keyword">select</span>
+<span class="token keyword">distinct</span> <span class="token string">"112. parent co name"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span> 
+<span class="token string">"113. parent co db num"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span> 
+<span class="token string">"23. primary naics"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span> 
+<span class="token string">"24. naics 2"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span> 
+<span class="token string">"25. naics 3"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span> 
+<span class="token string">"26. naics 4"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span> 
+<span class="token string">"27. naics 5"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+<span class="token string">"28. naics 6"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span> 
+<span class="token string">"17. primary sic"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span> 
+<span class="token string">"18. sic 2"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+<span class="token string">"19. sic 3"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+<span class="token string">"20. sic 4"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span> 
+<span class="token string">"21. sic 5"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span> 
+<span class="token string">"22. sic 6"</span> :: <span class="token keyword">varchar</span>
+<span class="token keyword">from</span> tri_pa_1987_2018<span class="token punctuation">;</span>
+
+<span class="token comment">--create the facility table</span>
+<span class="token keyword">drop</span> <span class="token keyword">table</span> <span class="token keyword">if</span> <span class="token keyword">exists</span> facility <span class="token keyword">cascade</span><span class="token punctuation">;</span>
+<span class="token keyword">create</span> <span class="token keyword">table</span> facility <span class="token punctuation">(</span>
+  trifd <span class="token keyword">varchar</span> <span class="token keyword">primary</span> <span class="token keyword">key</span><span class="token punctuation">,</span>
+  facility_name <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+  federal_facility <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+  street_address <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+  city <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+  county <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+  st <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+  zip <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+  geom <span class="token keyword">geometry</span><span class="token punctuation">,</span>
+  company_id <span class="token keyword">int</span> <span class="token keyword">references</span> company <span class="token punctuation">(</span>company_id<span class="token punctuation">)</span>
+  <span class="token punctuation">)</span><span class="token punctuation">;</span>
+  
+<span class="token keyword">insert</span> <span class="token keyword">into</span> facility <span class="token punctuation">(</span>trifd<span class="token punctuation">,</span> facility_name<span class="token punctuation">,</span> 
+federal_facility<span class="token punctuation">,</span> street_address<span class="token punctuation">,</span> city<span class="token punctuation">,</span> 
+county<span class="token punctuation">,</span> st<span class="token punctuation">,</span> zip<span class="token punctuation">,</span> geom<span class="token punctuation">,</span> company_id<span class="token punctuation">)</span>
+<span class="token keyword">select</span>
+<span class="token keyword">distinct</span> <span class="token string">"2. trifd"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span> 
+<span class="token string">"4. facility name"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span> 
+<span class="token string">"14. federal facility"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+<span class="token string">"5. street address"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span> 
+<span class="token string">"6. city"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span> 
+<span class="token string">"7. county"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span> 
+<span class="token string">"8. st"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span> 
+<span class="token string">"9. zip"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span> 
+geom :: <span class="token keyword">geometry</span><span class="token punctuation">,</span>
+<span class="token punctuation">(</span> <span class="token keyword">select</span> company_id
+  <span class="token keyword">from</span> company <span class="token keyword">as</span> <span class="token number">a</span>
+   <span class="token keyword">where</span> <span class="token number">a</span><span class="token punctuation">.</span>parent_co_db_num <span class="token operator">=</span> <span class="token number">b</span><span class="token punctuation">.</span><span class="token string">"113. parent co db num"</span>
+   <span class="token keyword">limit</span> <span class="token number">1</span><span class="token punctuation">)</span>
+<span class="token keyword">from</span> tri_pa_1987_2018 <span class="token keyword">as</span> <span class="token number">b</span><span class="token punctuation">;</span>
+
+
+<span class="token comment">--create the chemical table</span>
+<span class="token keyword">drop</span> <span class="token keyword">table</span> <span class="token keyword">if</span> <span class="token keyword">exists</span> chemical <span class="token keyword">cascade</span><span class="token punctuation">;</span>
+<span class="token keyword">create</span> <span class="token keyword">table</span> chemical <span class="token punctuation">(</span>
+  chemical <span class="token keyword">varchar</span> <span class="token keyword">primary</span> <span class="token keyword">key</span><span class="token punctuation">,</span>
+  srs_id <span class="token keyword">int</span><span class="token punctuation">,</span>
+  classification <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+  metal_category <span class="token keyword">int</span><span class="token punctuation">,</span>
+  metal <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+  carcinogen <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+  cas_compound_id <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+  clean_air_act_chemical <span class="token keyword">varchar</span>
+  <span class="token punctuation">)</span><span class="token punctuation">;</span>
+  
+<span class="token keyword">insert</span> <span class="token keyword">into</span> chemical <span class="token punctuation">(</span>chemical<span class="token punctuation">,</span> srs_id<span class="token punctuation">,</span> 
+classification<span class="token punctuation">,</span> metal_category<span class="token punctuation">,</span> metal<span class="token punctuation">,</span>
+carcinogen<span class="token punctuation">,</span> cas_compound_id<span class="token punctuation">,</span> clean_air_act_chemical <span class="token punctuation">)</span>
+<span class="token keyword">select</span>
+<span class="token keyword">distinct</span> <span class="token string">"30. chemical"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span> 
+<span class="token string">"32. srs id"</span> :: <span class="token keyword">int</span><span class="token punctuation">,</span> 
+<span class="token string">"34. classification"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span> 
+<span class="token string">"36. metal category"</span> :: <span class="token keyword">int</span><span class="token punctuation">,</span> 
+<span class="token string">"35. metal"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span> 
+<span class="token string">"37. carcinogen"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span> 
+<span class="token string">"31. cas #/compound id"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span> 
+<span class="token string">"33. clean air act chemical"</span> :: <span class="token keyword">varchar</span>
+<span class="token keyword">from</span> tri_pa_1987_2018<span class="token punctuation">;</span>
+
+
+<span class="token comment">--create the release table</span>
+<span class="token keyword">drop</span> <span class="token keyword">table</span> <span class="token keyword">if</span> <span class="token keyword">exists</span> <span class="token keyword">release</span> <span class="token keyword">cascade</span><span class="token punctuation">;</span>
+<span class="token keyword">create</span> <span class="token keyword">table</span> <span class="token keyword">release</span> <span class="token punctuation">(</span>
+  release_id <span class="token keyword">serial</span> <span class="token keyword">primary</span> <span class="token keyword">key</span><span class="token punctuation">,</span>
+  year <span class="token keyword">int</span><span class="token punctuation">,</span>
+  quantity <span class="token keyword">int</span><span class="token punctuation">,</span>
+  unit_of_measure <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+  industry_sector_code <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+  industry_sector <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+  form_type <span class="token keyword">varchar</span><span class="token punctuation">,</span>
+  trifd <span class="token keyword">varchar</span> <span class="token keyword">references</span> facility <span class="token punctuation">(</span>trifd<span class="token punctuation">)</span><span class="token punctuation">,</span>
+  chemical <span class="token keyword">varchar</span> <span class="token keyword">references</span> chemical <span class="token punctuation">(</span>chemical<span class="token punctuation">)</span>
+  <span class="token punctuation">)</span><span class="token punctuation">;</span>
+  
+<span class="token keyword">insert</span> <span class="token keyword">into</span> <span class="token keyword">release</span> <span class="token punctuation">(</span>year<span class="token punctuation">,</span> quantity<span class="token punctuation">,</span> 
+unit_of_measure<span class="token punctuation">,</span> industry_sector_code<span class="token punctuation">,</span> 
+industry_sector<span class="token punctuation">,</span> form_type<span class="token punctuation">,</span> trifd<span class="token punctuation">,</span> chemical<span class="token punctuation">)</span>
+<span class="token keyword">select</span>
+<span class="token keyword">distinct</span>  <span class="token string">"1. year"</span> :: <span class="token keyword">int</span><span class="token punctuation">,</span> 
+<span class="token string">"54. on-site release total"</span> :: <span class="token keyword">int</span><span class="token punctuation">,</span> 
+<span class="token string">"39. unit of measure"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span> 
+<span class="token string">"15. industry sector code"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span> 
+<span class="token string">"16. industry sector"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span> 
+<span class="token string">"38. form type"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span> 
+<span class="token string">"2. trifd"</span> :: <span class="token keyword">varchar</span><span class="token punctuation">,</span> 
+<span class="token string">"30. chemical"</span> :: <span class="token keyword">varchar</span>
+<span class="token keyword">from</span> tri_pa_1987_2018<span class="token punctuation">;</span>
+
+<span class="token comment">--create the type table</span>
+<span class="token keyword">drop</span> <span class="token keyword">table</span> <span class="token keyword">if</span> <span class="token keyword">exists</span> <span class="token keyword">type</span> <span class="token keyword">cascade</span><span class="token punctuation">;</span>
+<span class="token keyword">create</span> <span class="token keyword">table</span> <span class="token keyword">type</span> <span class="token punctuation">(</span>
+  type_id <span class="token keyword">serial</span> <span class="token keyword">primary</span> <span class="token keyword">key</span><span class="token punctuation">,</span>
+  fugitive_air <span class="token keyword">float</span><span class="token punctuation">,</span>
+  stack_air <span class="token keyword">float</span><span class="token punctuation">,</span>
+  water <span class="token keyword">float</span><span class="token punctuation">,</span>
+  other_landfills <span class="token keyword">float</span><span class="token punctuation">,</span>
+  rcra_c_landfill <span class="token keyword">float</span><span class="token punctuation">,</span>
+  land_treatment <span class="token keyword">float</span><span class="token punctuation">,</span>
+  surface_impendmnt <span class="token keyword">float</span><span class="token punctuation">,</span>
+  rcra_surface_im <span class="token keyword">float</span><span class="token punctuation">,</span>
+  other_surface <span class="token keyword">float</span><span class="token punctuation">,</span>
+  other_disposal <span class="token keyword">float</span><span class="token punctuation">,</span>
+  underground <span class="token keyword">int</span><span class="token punctuation">,</span>
+  underground_cl_l <span class="token keyword">float</span><span class="token punctuation">,</span>
+  underground_c_ll_v <span class="token keyword">float</span><span class="token punctuation">,</span>
+  release_id <span class="token keyword">serial</span> <span class="token keyword">references</span> <span class="token keyword">release</span> <span class="token punctuation">(</span>release_id<span class="token punctuation">)</span>
+  <span class="token punctuation">)</span><span class="token punctuation">;</span>
+  
+<span class="token keyword">insert</span> <span class="token keyword">into</span> <span class="token keyword">type</span> <span class="token punctuation">(</span>fugitive_air<span class="token punctuation">,</span> stack_air<span class="token punctuation">,</span> water<span class="token punctuation">,</span> 
+other_landfills<span class="token punctuation">,</span> rcra_c_landfill<span class="token punctuation">,</span> land_treatment<span class="token punctuation">,</span> 
+surface_impendmnt<span class="token punctuation">,</span> rcra_surface_im<span class="token punctuation">,</span> other_surface<span class="token punctuation">,</span> 
+other_disposal<span class="token punctuation">,</span> underground<span class="token punctuation">,</span> underground_cl_l<span class="token punctuation">,</span> 
+underground_c_ll_v<span class="token punctuation">,</span> release_id <span class="token punctuation">)</span>
+<span class="token keyword">select</span>
+<span class="token keyword">distinct</span> <span class="token string">"40. 5.1 - fugitive air"</span> :: <span class="token keyword">float</span><span class="token punctuation">,</span> 
+<span class="token string">"41. 5.2 - stack air"</span> :: <span class="token keyword">float</span><span class="token punctuation">,</span> 
+<span class="token string">"42. 5.3 - water"</span> :: <span class="token keyword">float</span><span class="token punctuation">,</span> 
+<span class="token string">"48. 5.5.1b - other landfills"</span> :: <span class="token keyword">float</span><span class="token punctuation">,</span> 
+<span class="token string">"47. 5.5.1a - rcra c landfill"</span> :: <span class="token keyword">float</span><span class="token punctuation">,</span> 
+<span class="token string">"49. 5.5.2 - land treatment"</span> :: <span class="token keyword">float</span><span class="token punctuation">,</span> 
+<span class="token string">"50. 5.5.3 - surface impndmnt"</span> :: <span class="token keyword">float</span><span class="token punctuation">,</span>
+<span class="token string">"51. 5.5.3a - rcra surface im"</span> :: <span class="token keyword">float</span><span class="token punctuation">,</span> 
+<span class="token string">"52. 5.5.3b - other surface i"</span> :: <span class="token keyword">float</span><span class="token punctuation">,</span> 
+<span class="token string">"53. 5.5.4 - other disposal"</span> :: <span class="token keyword">float</span><span class="token punctuation">,</span>
+<span class="token string">"43. 5.4 - underground"</span> :: <span class="token keyword">float</span><span class="token punctuation">,</span> 
+<span class="token string">"44. 5.4.1 - underground cl i"</span> :: <span class="token keyword">float</span><span class="token punctuation">,</span> 
+<span class="token string">"45. 5.4.2 - underground c ii-v"</span> :: <span class="token keyword">float</span><span class="token punctuation">,</span>
+<span class="token punctuation">(</span><span class="token keyword">select</span> release_id
+ <span class="token keyword">from</span> <span class="token keyword">release</span> <span class="token keyword">as</span> <span class="token number">a</span> 
+  <span class="token keyword">where</span> <span class="token number">a</span><span class="token punctuation">.</span>trifd <span class="token operator">=</span> <span class="token number">b</span><span class="token punctuation">.</span><span class="token string">"2. trifd"</span>
+  <span class="token keyword">limit</span> <span class="token number">1</span><span class="token punctuation">)</span>
+<span class="token keyword">from</span> tri_pa_1987_2018 <span class="token keyword">as</span> <span class="token number">b</span><span class="token punctuation">;</span>
+</code></pre>
+<h2 id="spatial-queries">Spatial Queries</h2>
+<h3 id="there-are-endless-possibilites--to-the-spatial-queries-you-can-ask-at-this-point.-i-encourage-you-to-read-through-the-postgis-documentation-and-play-around-with-your-own-queries.-for-this-tutorial-i-put-together-the-following-four-examples-for-you-to-try-out-along-with-their-expected-results.-lets-take-a-look">There are endless possibilites  to the spatial queries you can ask at this point. I encourage you to read through the PostGIS documentation and play around with your own queries. For this tutorial, I put together the following four examples for you to try out along with their expected results. Let’s take a look:</h3>
+<p><strong>Spatial Query 1</strong>:<br>
+For the year 1990, what chemicals in which census tracts, along with their TRIFD identifier, reported their max emission as greater than 1,000,000?</p>
+<h4 id="to-answer-this-spatial-query-we-will-need-to-use-two-of-the-tables-described-earlier-in-the-erd-diagram-facility-and-release-as-well-as-the-pa-census-tracts-layer.---were-interested-in-the-names-of-the-chemicals-their-tri-emission-identifier-trifd--and-corresponding-pa-census-tract--for-emissions-reporting-over-1000000-for-year-1990.-to-do-this-we-need-to-identify-all-the-tri-points-which-intersect-each--census-tract-polygon.--oftentimes-you-may-recieve-spatial-data-with-differing-projection-systems.-this-was-the-case-with-the--pa-census-tracts-layer-and-the-tri-data.--since-these-projection-systems-were-different-the-geometry-of-the-census-tract-layer-had-to-be-transformed-to-match-the-tri-facilities-in-order-for-this-query-to-work.">To answer this spatial query, we will need to use two of the tables described earlier in the ERD diagram: facility, and release, as well as the PA Census Tracts layer.   We’re interested in the names of the chemicals, their TRI emission identifier( trifd),  and corresponding PA census tract  for emissions reporting over 1,000,000 for year 1990. To do this, we need to identify all the TRI points which intersect each  census tract polygon.  Oftentimes, you may recieve spatial data with differing projection systems. This was the case with the  PA Census Tracts layer and the TRI data.  Since these projection systems were different, the geometry of the census tract layer had to be transformed to match the TRI facilities in order for this query to work.</h4>
+<pre class=" language-sql"><code class="prism  language-sql"><span class="token keyword">select</span> <span class="token number">a</span><span class="token punctuation">.</span>trifd<span class="token punctuation">,</span> <span class="token number">b</span><span class="token punctuation">.</span>chemical<span class="token punctuation">,</span> <span class="token function">max</span><span class="token punctuation">(</span><span class="token number">b</span><span class="token punctuation">.</span>quantity<span class="token punctuation">)</span><span class="token punctuation">,</span> 
+<span class="token number">b</span><span class="token punctuation">.</span>year<span class="token punctuation">,</span> <span class="token number">c</span><span class="token punctuation">.</span>namelsad<span class="token punctuation">,</span> <span class="token number">c</span><span class="token punctuation">.</span>geom<span class="token punctuation">,</span> <span class="token number">a</span><span class="token punctuation">.</span>geom
+<span class="token keyword">from</span> facility <span class="token keyword">as</span> <span class="token number">a</span> 
+<span class="token keyword">join</span> <span class="token keyword">release</span> <span class="token keyword">as</span> <span class="token number">b</span> 
+<span class="token keyword">on</span> <span class="token number">a</span><span class="token punctuation">.</span>trifd <span class="token operator">=</span> <span class="token number">b</span><span class="token punctuation">.</span>trifd
+<span class="token keyword">join</span> 
+ tl_2016_42_tract <span class="token keyword">as</span> <span class="token number">c</span> 
+ <span class="token keyword">on</span> ST_Intersects<span class="token punctuation">(</span>ST_Transform<span class="token punctuation">(</span><span class="token number">c</span><span class="token punctuation">.</span>geom<span class="token punctuation">,</span> <span class="token number">4326</span><span class="token punctuation">)</span>:: geography<span class="token punctuation">,</span> <span class="token number">a</span><span class="token punctuation">.</span>geom<span class="token punctuation">)</span>
+<span class="token keyword">where</span> <span class="token number">b</span><span class="token punctuation">.</span>year <span class="token operator">=</span> <span class="token number">1990</span> <span class="token operator">and</span> <span class="token number">b</span><span class="token punctuation">.</span>quantity <span class="token operator">&gt;</span> <span class="token number">1000000</span>
+<span class="token keyword">group</span> <span class="token keyword">by</span> <span class="token number">a</span><span class="token punctuation">.</span>trifd<span class="token punctuation">,</span> <span class="token number">b</span><span class="token punctuation">.</span>chemical<span class="token punctuation">,</span> <span class="token number">c</span><span class="token punctuation">.</span>namelsad<span class="token punctuation">,</span>
+<span class="token number">b</span><span class="token punctuation">.</span>chemical<span class="token punctuation">,</span> <span class="token number">b</span><span class="token punctuation">.</span>year<span class="token punctuation">,</span> <span class="token number">c</span><span class="token punctuation">.</span>geom<span class="token punctuation">,</span> <span class="token number">a</span><span class="token punctuation">.</span>geom<span class="token punctuation">;</span>
+</code></pre>
+<p>RESULT:</p>
+<pre><code>trifd          |chemical             |max    |year|namelsad            |
+---------------|---------------------|-------|----|--------------------|
+15025SSCLR400ST|AMMONIA              |1140000|1990|Census Tract 4927   |
+15061ZNCCR300FR|ZINC COMPOUNDS       |1310750|1990|Census Tract 6055   |
+15902JHNST545CE|CHROMIUM             |1141510|1990|Census Tract 6      |
+16323FRNKL600AT|1,1,1-TRICHLOROETHANE|1243000|1990|Census Tract 2003   |
+17601RRDNN216GR|TOLUENE              |1182000|1990|Census Tract 132.02 |
+18016BTHLH501EA|ZINC COMPOUNDS       |1070600|1990|Census Tract 113    |
+19007MCMPNGREEN|TOLUENE              |1900250|1990|Census Tract 1004.03|
+19030SSFRLMAILS|MANGANESE COMPOUNDS  |7822200|1990|Census Tract 1058.09|
+19137LLDSGMARGA|CUMENE               |1053700|1990|Census Tract 184    |
+
+</code></pre>
+<p><img src="https://github.com/mckeonttemple/images/blob/gh-pages/SQ1_fullextent.png?raw=true" alt="enter image description here"><br>
+<img src="https://github.com/mckeonttemple/images/blob/gh-pages/SQ1_zoomed.png?raw=true" alt="enter image description here"></p>
+<p><strong>Spatial Query 2</strong>:<br>
+List the census tracts which contain chemicals that are classified as a carcinogen and that emitted between 10,000 and 15,000 pounds for the year 2018.</p>
+<h4 id="the-second-spatial-query-uses-four-tables-facility-chemical-release-and-pa-census-tracts.---in-this-query--were-interested-in-the-names-of-the-chemicals-their-emission-quantity-between-10000-and-15000--emission-unit-of-measure-and-census-tract-name-for-emissions--which-are-classified-as-a-carcinogen-for-year-2018.-this-query-requires-identifying-all-the-tri-points-which-intersect-each-census-tract-layer.-again-since-these--projection-systems-were-different-the-geometry-of-the-census-tract-layer-had-to-be-transformed-to-match-the-tri-facilities-in-order-for-this-query-to-work.">The second spatial query uses four tables: facility, chemical, release, and PA Census Tracts.   In this query,  we’re interested in the names of the chemicals, their emission quantity between 10,000 and 15,000,  emission unit of measure, and census tract name, for emissions  which are classified as a carcinogen, for year 2018. This query requires identifying all the TRI points which intersect each census tract layer. Again, since these  projection systems were different, the geometry of the census tract layer had to be transformed to match the TRI facilities in order for this query to work.</h4>
+<pre class=" language-sql"><code class="prism  language-sql"><span class="token keyword">select</span> <span class="token number">a</span><span class="token punctuation">.</span>chemical<span class="token punctuation">,</span> <span class="token number">a</span><span class="token punctuation">.</span>quantity<span class="token punctuation">,</span> <span class="token number">a</span><span class="token punctuation">.</span>unit_of_measure<span class="token punctuation">,</span>
+ <span class="token number">d</span><span class="token punctuation">.</span>namelsad<span class="token punctuation">,</span> <span class="token number">d</span><span class="token punctuation">.</span>geom<span class="token punctuation">,</span> <span class="token number">c</span><span class="token punctuation">.</span>geom
+<span class="token keyword">from</span> <span class="token keyword">release</span> <span class="token keyword">as</span> <span class="token number">a</span> 
+<span class="token keyword">join</span> chemical <span class="token keyword">as</span> <span class="token number">b</span> 
+	<span class="token keyword">on</span> <span class="token number">a</span><span class="token punctuation">.</span>chemical <span class="token operator">=</span> <span class="token number">b</span><span class="token punctuation">.</span>chemical 
+<span class="token keyword">join</span> facility <span class="token keyword">as</span> <span class="token number">c</span> 
+	<span class="token keyword">on</span> <span class="token number">a</span><span class="token punctuation">.</span>trifd <span class="token operator">=</span> <span class="token number">c</span><span class="token punctuation">.</span>trifd 
+<span class="token keyword">join</span>
+   tl_2016_42_tract <span class="token keyword">as</span> <span class="token number">d</span>
+ <span class="token keyword">on</span> ST_Intersects<span class="token punctuation">(</span>ST_Transform<span class="token punctuation">(</span><span class="token number">d</span><span class="token punctuation">.</span>geom<span class="token punctuation">,</span> <span class="token number">4326</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token number">c</span><span class="token punctuation">.</span>geom<span class="token punctuation">)</span>
+<span class="token keyword">where</span> <span class="token number">b</span><span class="token punctuation">.</span>carcinogen ilike <span class="token string">'YES'</span> <span class="token operator">and</span> <span class="token number">a</span><span class="token punctuation">.</span>year <span class="token operator">=</span> <span class="token number">2018</span> 
+ <span class="token operator">and</span> <span class="token number">a</span><span class="token punctuation">.</span>quantity <span class="token operator">between</span> <span class="token number">10000</span> <span class="token operator">and</span> <span class="token number">15000</span>
+<span class="token keyword">group</span> <span class="token keyword">by</span> <span class="token number">a</span><span class="token punctuation">.</span>chemical<span class="token punctuation">,</span> <span class="token number">a</span><span class="token punctuation">.</span>quantity<span class="token punctuation">,</span> <span class="token number">a</span><span class="token punctuation">.</span>unit_of_measure<span class="token punctuation">,</span>
+<span class="token number">d</span><span class="token punctuation">.</span>namelsad<span class="token punctuation">,</span> <span class="token number">d</span><span class="token punctuation">.</span>geom<span class="token punctuation">,</span> <span class="token number">c</span><span class="token punctuation">.</span>geom<span class="token punctuation">;</span>
+
+</code></pre>
+<p>RESULT:</p>
+<pre><code>chemical       |quantity|unit_of_measure|namelsad           |
+---------------|--------|---------------|-------------------|
+ACETALDEHYDE   |   12909|Pounds         |Census Tract 205.21|
+ACETALDEHYDE   |   13314|Pounds         |Census Tract 9509  |
+DICHLOROMETHANE|   13152|Pounds         |Census Tract 3     |
+DICHLOROMETHANE|   13407|Pounds         |Census Tract 807   |
+STYRENE        |   11517|Pounds         |Census Tract 4610  |
+STYRENE        |   13176|Pounds         |Census Tract 9603  |
+</code></pre>
+<p><img src="https://github.com/mckeonttemple/images/blob/gh-pages/SQ2_fullextent.png?raw=true" alt="enter image description here"><br>
+<img src="https://github.com/mckeonttemple/images/blob/gh-pages/SQ2_zoomed.png?raw=true" alt="enter image description here"></p>
+<p><strong>Spatial Query 3</strong>:<br>
+For all years, identify the chemicals along with their corresponding census tracts that released greater than 4,500,000 pounds into water. Provide your answer in descending order.</p>
+<h4 id="the-third-spatial-query-uses-four-tables-type-release-facility-and-pa-census-tracts.---in-this-query--were-interested-in-the-names-of-the-chemicals-which-are-emitted-into-water-at-over-4500000-pounds-along-with-the-corresponding-census-tract-name--presented-in-descending-order-by-quantity-of-emissions.--this-query-requires-identifying-all-the-tri-points-which-intersect-the-census-tract-layer.-since-these--projection-systems-again-were-different-the-geometry-of-the-census-tract-layer-had-to-be-transformed-to-match-the-tri-facilities-in-order-for-this-query-to-work.">The third spatial query uses four tables: type, release, facility, and PA Census Tracts.   In this query,  we’re interested in the names of the chemicals which are emitted into water at over 4,500,000 pounds, along with the corresponding census tract name,  presented in descending order by quantity of emissions.  This query requires identifying all the TRI points which intersect the census tract layer. Since these  projection systems again were different, the geometry of the census tract layer had to be transformed to match the TRI facilities in order for this query to work.</h4>
+<pre class=" language-sql"><code class="prism  language-sql"><span class="token keyword">select</span> <span class="token number">a</span><span class="token punctuation">.</span>water <span class="token keyword">as</span> water_emission_lbs<span class="token punctuation">,</span> 
+<span class="token number">d</span><span class="token punctuation">.</span>namelsad<span class="token punctuation">,</span> <span class="token number">b</span><span class="token punctuation">.</span>chemical<span class="token punctuation">,</span> <span class="token number">c</span><span class="token punctuation">.</span>geom
+<span class="token keyword">from</span> <span class="token keyword">type</span> <span class="token keyword">as</span> <span class="token number">a</span> 
+<span class="token keyword">join</span> <span class="token keyword">release</span> <span class="token keyword">as</span> <span class="token number">b</span> 
+<span class="token keyword">on</span> <span class="token number">a</span><span class="token punctuation">.</span>release_id <span class="token operator">=</span> <span class="token number">b</span><span class="token punctuation">.</span>release_id 
+<span class="token keyword">join</span> facility <span class="token keyword">as</span> <span class="token number">c</span> 
+<span class="token keyword">on</span> <span class="token number">b</span><span class="token punctuation">.</span>trifd <span class="token operator">=</span> <span class="token number">c</span><span class="token punctuation">.</span>trifd
+<span class="token keyword">join</span>
+   tl_2016_42_tract <span class="token keyword">as</span> <span class="token number">d</span>
+ <span class="token keyword">on</span> ST_Intersects<span class="token punctuation">(</span>ST_Transform<span class="token punctuation">(</span><span class="token number">d</span><span class="token punctuation">.</span>geom<span class="token punctuation">,</span> <span class="token number">4326</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token number">c</span><span class="token punctuation">.</span>geom<span class="token punctuation">)</span>
+<span class="token keyword">where</span> <span class="token number">a</span><span class="token punctuation">.</span>water <span class="token operator">&gt;</span> <span class="token number">4500000</span>
+<span class="token keyword">order</span> <span class="token keyword">by</span> <span class="token number">d</span><span class="token punctuation">.</span>namelsad<span class="token punctuation">,</span> <span class="token number">b</span><span class="token punctuation">.</span>chemical<span class="token punctuation">,</span> <span class="token number">a</span><span class="token punctuation">.</span>water <span class="token keyword">desc</span><span class="token punctuation">;</span>
+</code></pre>
+<p>RESULT:</p>
+<pre><code>water_emission_lbs|namelsad          |chemical                                           |
+------------------|------------------|---------------------------------------------------|
+         6003084.0|Census Tract 141  |SULFURIC ACID (1994 AND AFTER ACID AEROSOLS" ONLY)"|
+         5000000.0|Census Tract 60.02|FORMIC ACID                                        |
+             3.2E7|Census Tract 9030 |ZINC COMPOUNDS                                     |
+             3.1E7|Census Tract 9030 |ZINC COMPOUNDS                                     |
+             2.8E7|Census Tract 9030 |ZINC COMPOUNDS                                     |
+             2.6E7|Census Tract 9030 |ZINC COMPOUNDS                                     |
+             1.2E7|Census Tract 9030 |ZINC COMPOUNDS                                     |
+         9800000.0|Census Tract 9030 |ZINC COMPOUNDS                                     |
+         8400000.0|Census Tract 9030 |ZINC COMPOUNDS                                     |
+         7560000.0|Census Tract 9505 |CATECHOL                                           |
+</code></pre>
+<p><img src="https://github.com/mckeonttemple/images/blob/gh-pages/SQ3_fullextent.png?raw=true" alt="enter image description here"><br>
+<img src="https://github.com/mckeonttemple/images/blob/gh-pages/SQ3_zoomed.png?raw=true" alt="enter image description here"></p>
+<p><strong>Spatial Query 4</strong>:<br>
+Perhaps you may be interested in knowing which  TRI emissions are near a census tract but do not actually fall within their geographic boundaries. Find the top five closest TRI emissions to each census tract, but limit to the top 5 census tracts with the farthest nearest neighbor. Report in meters and in descending order.</p>
+<h4 id="this-fourth-spatial-query-uses-a-knn-operator--to-calculate-the-distance-of-the-nearest-tri-emission-to-each-census-tract.--this-query-uses-a-cross-lateral-join-which-allows-rows-from-the-census-tract-table-to-assume-multiple-values-from-the-tri-emissions-table.--in-this-join-we-can-set-a-limit--to-identify-the-closest-5-tri-emissions-to-each-census-tract-rather-than-generate-a-list-of-distances-of-all-emissions-to-all-census-tracts-which-would-have-been-a-time-intensive-and-massive-query.--this-query-was-then-further-refined-to-limit-to-the-5-farthest-nearest-neighbors.">This fourth spatial query uses a KNN operator ‘&lt;#&gt;’ to calculate the distance, of the nearest TRI emission to each census tract.  This query uses a cross lateral join, which allows rows from the census tract table to assume multiple values from the TRI emissions table.  In this join, we can set a limit  to identify the closest 5 TRI emissions to each census tract, rather than generate a list of distances of ALL emissions to ALL census tracts, which would have been a time-intensive and massive query.  This query was then further refined to limit to the 5 “farthest” nearest neighbors.</h4>
+<pre class=" language-sql"><code class="prism  language-sql"><span class="token keyword">select</span> <span class="token number">a</span><span class="token punctuation">.</span>trifd<span class="token punctuation">,</span> <span class="token number">c</span><span class="token punctuation">.</span>namelsad<span class="token punctuation">,</span> 
+ST_Distance<span class="token punctuation">(</span>ST_Transform<span class="token punctuation">(</span><span class="token number">c</span><span class="token punctuation">.</span>geom<span class="token punctuation">,</span> <span class="token number">4326</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token number">a</span><span class="token punctuation">.</span>geom<span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token number">a</span><span class="token punctuation">.</span>geom
+<span class="token keyword">from</span> facility <span class="token keyword">as</span> <span class="token number">a</span> 
+<span class="token keyword">cross</span> <span class="token keyword">join</span> lateral 
+   <span class="token punctuation">(</span> 
+    <span class="token keyword">select</span> <span class="token number">b</span><span class="token punctuation">.</span>namelsad<span class="token punctuation">,</span> <span class="token number">b</span><span class="token punctuation">.</span>geom
+    <span class="token keyword">from</span> tl_2016_42_tract <span class="token keyword">as</span> <span class="token number">b</span> 
+    <span class="token keyword">order</span> <span class="token keyword">by</span> <span class="token number">b</span><span class="token punctuation">.</span>geom <span class="token operator">&lt;</span><span class="token comment">#&gt; a.geom limit 5</span>
+    <span class="token punctuation">)</span> <span class="token keyword">as</span> <span class="token number">c</span>
+    <span class="token keyword">order</span> <span class="token keyword">by</span> ST_Distance <span class="token keyword">desc</span> <span class="token keyword">limit</span> <span class="token number">5</span><span class="token punctuation">;</span>
+</code></pre>
+<p>RESULT:</p>
+<pre><code>trifd          |namelsad         |st_distance        |
+---------------|-----------------|-------------------|
+15501PBSQC10310|Census Tract 213 |0.25562248185360786|
+16923HRBRTGOLDR|Census Tract 9504|0.24837055146323297|
+16825BRDFRMCDOW|Census Tract 105 |0.24237052516641694|
+17236KNSFD9332H|Census Tract 9602|0.23625539658035907|
+16915LHLNC203CH|Census Tract 9602|  0.231753455854587|
+</code></pre>
+<p><img src="https://github.com/mckeonttemple/images/blob/gh-pages/SQ4_fullextent.png?raw=true" alt="enter image description here"><br>
+<img src="https://github.com/mckeonttemple/images/blob/gh-pages/SQ4_zoomed.png?raw=true" alt="enter image description here"></p>
+<h3 id="i-hope-you-enjoyed-this-tutorial">I hope you enjoyed this tutorial!</h3>
+</div>
+</body>
+
+</html>
