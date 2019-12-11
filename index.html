@@ -10,10 +10,10 @@
 
 <body class="stackedit">
   <div class="stackedit__html"><h2 id="designing-a-relational-database-for-spatial-querying-using-postgressql-with-postgis">Designing a Relational Database for Spatial Querying using PostgresSQL with PostGIS</h2>
-<p>Authored by: Tom McKeon, MPH</p>
-<p>This tutorial is meant to provide an example of how to design a relational spatial database for spatial querying by using freely available resources. All you will need is a computer, an internet connection, and some patience.</p>
-<p>For this exercise, we will use point-level data from the US- EPA’s Toxic Release Inventory Program ( TRI ) and join it by spatial location to polygon-level census tract boundaries from <a href="http://census.gov">census.gov</a>.  QGIS and DBeaver will be used to manage the data. LucidCharts will help us easily sketch an Entity-Relationship Diagram. PostgresSQL with the PostGIS extension will be used to write code to process and analyze these data.</p>
-<p>The TRI  Program contains information about chemical releases from industrial and federal facilities. The data contains information about each chemical release’s:</p>
+<p>This tutorial is meant to provide an example of how to design a relational spatial database for spatial querying through the  use of freely available resources. All you will need is a computer, an internet connection, and some patience.</p>
+<p>In this exercise, you will learn how to use point-level data from the US- EPA’s Toxic Release Inventory Program ( TRI ) and join it by spatial location to polygon-level data of census tract boundaries from <a href="http://census.gov">census.gov</a>.</p>
+<p>QGIS and DBeaver will be used to manage the data. LucidCharts will help us easily sketch an Entity-Relationship Diagram. PostgresSQL with the PostGIS extension will be used to write code to process and analyze these data.</p>
+<p>The TRI  Program contains information about chemical releases from industrial and federal facilities.  The data contains information about toxic releases with the following attributes:</p>
 <ul>
 <li>Facility name, address, latitude and longitude coordinates, and industry sector codes</li>
 <li>Chemical identification and classification information</li>
@@ -22,10 +22,11 @@
 <li>Quantities of chemicals transferred off site to other locations for release/disposal and further waste management</li>
 <li>Quantities of chemicals managed through disposal, energy recovery, recycling and treatment; non-production-related waste quantities; production/activity ratio</li>
 </ul>
-<p>Documentation about the TRI attributes may be further reviewed here: <a href="https://www.epa.gov/toxics-release-inventory-tri-program/tri-basic-data-files-guide">https://www.epa.gov/toxics-release-inventory-tri-program/tri-basic-data-files-guide</a></p>
-<p>Annual .csv data files for Pennsylvania TRIs can be manually downloaded here: <a href="https://www.epa.gov/toxics-release-inventory-tri-program/tri-basic-data-files-calendar-years-19872018">https://www.epa.gov/toxics-release-inventory-tri-program/tri-basic-data-files-calendar-years-19872018</a><br>
-To follow along in this tutorial, download data for years 1987 to 2018.</p>
-<p>Once downloaded, open Command Prompt and go to the folder where all the .csv files were downloaded.  Make sure all the .csv files are downloaded into the same folder.  Once you’re in the correct folder path, use the following code to combine all the .csv files into one (note I named the combined file as “TRI_PA_1987_2018_all_zips.csv”:</p>
+<p>You can further review documentation about the TRI attributes  here: <a href="https://www.epa.gov/toxics-release-inventory-tri-program/tri-basic-data-files-guide">https://www.epa.gov/toxics-release-inventory-tri-program/tri-basic-data-files-guide</a></p>
+<h2 id="lets-get-to-it">Let’s get to it!</h2>
+<p>In this tutorial, we’ll use data for years 1987 to 2018. Start by downloading annual .csv data files for Pennsylvania TRIs here:<br>
+<a href="https://www.epa.gov/toxics-release-inventory-tri-program/tri-basic-data-files-calendar-years-19872018">https://www.epa.gov/toxics-release-inventory-tri-program/tri-basic-data-files-calendar-years-19872018</a></p>
+<p>Once downloaded, open Command Prompt and go to the folder where all the .csv files were downloaded.  Make sure all the .csv files are downloaded into the same folder.  Once you’re in the correct folder path, use the following code to combine all the .csv files into one named <strong>TRI_PA_1987_2018_all_zips.csv</strong></p>
 <pre><code>copy *.csv TRI_PA_1987_2018_all_zips.csv
 </code></pre>
 <p>Next you will need to download QGIS, a freely available geographic information system, downloadable here: <a href="https://qgis.org/en/site/forusers/download.html">https://qgis.org/en/site/forusers/download.html</a></p>
@@ -34,7 +35,7 @@ To follow along in this tutorial, download data for years 1987 to 2018.</p>
 <p>Once completed,  you should now see a visualization of all 143,436 points in this Pennsylvania TRI dataset:<br>
 <img src="https://github.com/mckeonttemple/images/blob/gh-pages/tri_mark2.png?raw=true" alt="enter image description here"><br>
 Repeat the above QGIS step with Pennsylvania census tract data. You have the option of importing a Shapefile instead of a .csv file using the following link: <a href="https://catalog.data.gov/dataset/tiger-line-shapefile-2016-state-pennsylvania-current-census-tract-state-based">https://catalog.data.gov/dataset/tiger-line-shapefile-2016-state-pennsylvania-current-census-tract-state-based</a><br>
-A shapefile is a common spatial data format which you may encounter when working with other datasets.  If you download the shapefile, you will have a zipped folder containing several files. Keep this folder zipped.  In QGIS go to <strong>Add Vector Layer</strong>  &gt; browse for the zipped folder, select it, and import it.</p>
+A shapefile is a common spatial data format which you may encounter when working with other datasets.  If you download the shapefile, you will have a zipped folder containing several files. Keep this folder  zipped.  In QGIS go to <strong>Add Vector Layer</strong>  &gt; browse for the zipped folder, select it, and import it.</p>
 <p>Once completed, you should see the 3,218 census tracts which make up Pennsylvania.</p>
 <p><img src="https://github.com/mckeonttemple/images/blob/gh-pages/pa_census_tracts.png?raw=true" alt="enter image description here"></p>
 <p>Next setup DBeaver, a SQL client and database administration tool which we will use to manage the TRI data and create entity-relationship tables.  DBeaver is freely available through the following link:  <a href="http://dbeaver.io">dbeaver.io</a></p>
@@ -45,7 +46,7 @@ A shapefile is a common spatial data format which you may encounter when working
 <p>You can read more about PostGIS functions here: <a href="http://postgis.net/workshops/postgis-intro/">postgis.net/workshops/postgis-intro/</a></p>
 <p>Great! Next we’ll want to connect our newly created spatial data, stored in QGIS to DBeaver.</p>
 <p>In order to do this, a new schema needs to first be created in DBeaver. Do this by right-clicking in the database navigator and choosing <strong>create</strong> &gt; <strong>schema</strong> then naming it something relevant. Once created, go back to QGIS and connect to the schema by connecting to DB Manager under the database tab. You should now have your data in DBeaver.</p>
-<p>Next, we will have to normalize our TRI data. The data comes with over 110 fields, many of which can be calculated through spatial querying.  For this tutorial, the TRI data was normalized into five entity-relationship tables, each containing a primary key for unique entries, as well as foriegn keys to connect to other tables’ primary keys. <a href="http://LucidChart.com">LucidChart.com</a> can be used to diagram these tables. The list below describes these tables in further detail.</p>
+<p>Next, we will have to normalize our  data. The data comes with over 110 fields, many of which can be calculated through spatial querying.  For this tutorial, the TRI data was normalized into five entity-relationship tables, each containing a primary key for unique entries, as well as foriegn keys to connect to other tables’ primary keys. <a href="http://lucidchart.com">lucidchart.com</a> can be used to diagram these tables. The list below describes these tables in further detail.</p>
 <ol>
 <li><strong>Facility</strong>: Contains facility location information,  geometries, address, name, and TRI emission identifier.</li>
 <li><strong>Company</strong>: Contains parent company information, NAICS and SIC information.</li>
@@ -53,7 +54,7 @@ A shapefile is a common spatial data format which you may encounter when working
 <li><strong>Chemical</strong>: Contains information about the chemical released such as its classifcation, carcinogen status, metal status, clean air act chemical status, and cas compound identifier.</li>
 <li><strong>Type</strong>:  Contains information about the type of release such as air, water, underground, and surface.</li>
 </ol>
-<p>The following image shows how the tables are connected. The entity connections use a crows feet convention, which can be further reviewed in <a href="http://lucidcharts.com">lucidcharts.com</a>.</p>
+<p>The following image shows how the tables are connected. The entity connections use a crows feet convention, which can be further reviewed in <a href="http://lucidchart.com">lucidchart.com</a>.</p>
 <p><img src="https://github.com/mckeonttemple/images/blob/gh-pages/ERD_McKeon.png?raw=true" alt="enter image description here"></p>
 <h2 id="creating-tables-in-dbeaver">Creating Tables in DBeaver</h2>
 <p>The following SQL script inputs the tables described above into DBeaver. Once created, we are ready to begin asking our spatial queries!</p>
@@ -388,6 +389,7 @@ Perhaps you may be interested in knowing which  TRI emissions are near a census 
 <p><img src="https://github.com/mckeonttemple/images/blob/gh-pages/SQ4_fullextent.png?raw=true" alt="enter image description here"><br>
 <img src="https://github.com/mckeonttemple/images/blob/gh-pages/SQ4_zoomed.png?raw=true" alt="enter image description here"></p>
 <h3 id="i-hope-you-enjoyed-this-tutorial">I hope you enjoyed this tutorial!</h3>
+<p>Tom McKeon, MPH</p>
 </div>
 </body>
 
