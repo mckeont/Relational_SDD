@@ -276,7 +276,26 @@ underground_c_ll_v<span class="token punctuation">,</span> release_id <span clas
 For the year 1990, what chemicals in which census tracts, along with their TRIFD identifier, reported their max emission as greater than 1,000,000?</p>
 <h4 id="use-the-facility-and-release-tables-to-join-to-the-census-tract-table.-think-about-how-to-select-chemical-names-tri-emission-identifiers--trifd--corresponding-pa-census-tract-year-and-emissions.">Use the facility and release tables to join to the Census Tract table. Think about how to select chemical names, TRI emission identifiers ( trifd),  corresponding PA census tract, year, and emissions.</h4>
 <h4 id="you-will-want-to-use-an-aggegrate-function-to-choose-the-max-emissions.--fortunately-we-designed-these-tables-to-be-relational.--join-the-facility-table-which-contains-information-about-the-facilitys-location-to-the-release-table-which-contains-information-about-the-emission.-this-join-can-be-done-by-the-trifd-field-which-is-the-primary-key-of-the-facility-table-and-the-foreign-key-of-the-release-table.">You will want to use an aggegrate function to choose the max emissions.  Fortunately, we designed these tables to be relational.  Join the facility table, which contains information about the facility’s location to the release table which contains information about the emission. This join can be done by the trifd field which is the primary key of the facility table, and the foreign key of the release table.</h4>
-<h4 id="next-join-to-the-census-tract-table-by-using-a-postgis-function--st_intersects-.-this-allows-for-a-join-by-spatial-location-of-the-tri-points-which-intersect-to-each-census-tract-polygon.--oftentimes-you-may-recieve-spatial-data-with-differing-projection-systems.-the-st_sridgeom-function-allows-us-to-check-the-geographic-projection-of-each-layer.">Next join to the census tract table by using a PostGIS function:  <em>ST_Intersects</em> . This allows for a join by spatial location of the TRI points which intersect to each census tract polygon.  Oftentimes, you may recieve spatial data with differing projection systems. <em>The ST_SRID(geom)</em> function allows us to check the geographic projection of each layer.</h4>
+<h4 id="next-join-to-the-census-tract-table-by-using-a-postgis-function--st_intersects-.">Next join to the census tract table by using a PostGIS function:  <em>ST_Intersects</em> .</h4>
+<pre class=" language-sql"><code class="prism  language-sql"><span class="token keyword">join</span> tl_2016_42_tract
+  <span class="token keyword">on</span> ST_Intersects<span class="token punctuation">(</span>ST_Transform<span class="token punctuation">(</span>tl_2016_42_tract<span class="token punctuation">.</span>geom<span class="token punctuation">,</span> <span class="token number">4326</span><span class="token punctuation">)</span> 
+     :: geography<span class="token punctuation">,</span> facility<span class="token punctuation">.</span>geom<span class="token punctuation">)</span>
+</code></pre>
+<p>This allows for a join by spatial location of the TRI points which intersect to each census tract polygon.  Oftentimes, you may recieve spatial data with differing projection systems. <em>The ST_SRID(geom)</em> function allows us to check the geographic projection of each layer.</p>
+<pre class=" language-sql"><code class="prism  language-sql"><span class="token keyword">select</span> st_srid<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>
+<span class="token keyword">from</span> tl_2016_42_tract<span class="token punctuation">;</span>
+
+st_srid<span class="token operator">|</span>
+<span class="token comment">-------|</span>
+   <span class="token number">4269</span><span class="token operator">|</span>
+</code></pre>
+<pre class=" language-sql"><code class="prism  language-sql"><span class="token keyword">select</span> st_srid<span class="token punctuation">(</span>geom<span class="token punctuation">)</span>
+<span class="token keyword">from</span> facility<span class="token punctuation">;</span>
+
+st_srid<span class="token operator">|</span>
+<span class="token comment">-------|</span>
+   <span class="token number">4326</span><span class="token operator">|</span>
+</code></pre>
 <h4 id="in-our-case-the-the-pa-census-tracts-layer-uses-the-srid-4269-httpsepsg.io4269-coordinate-system.--the-tri-data-uses-srid-4326-httpsepsg.io4326-coordinate-system-.--since-these-projection-systems-differ-the-geometry-of-the-census-tract-layer-has-to-be-transformed-to-match-the-tri-facilities-in-order-for-this-query-to-work-using-the-st_transform-function.">In our case, the The PA Census Tracts layer uses the SRID 4269 <a href="https://epsg.io/4269">https://epsg.io/4269</a> coordinate system.  The TRI data uses SRID 4326 <a href="https://epsg.io/4326">https://epsg.io/4326</a> coordinate system .  Since these projection systems differ, the geometry of the census tract layer has to be transformed to match the TRI facilities in order for this query to work, using the <em>ST_Transform</em> function.</h4>
 <pre class=" language-sql"><code class="prism  language-sql"><span class="token keyword">select</span> <span class="token number">a</span><span class="token punctuation">.</span>trifd<span class="token punctuation">,</span> 
   <span class="token number">b</span><span class="token punctuation">.</span>chemical<span class="token punctuation">,</span> 
