@@ -44,12 +44,12 @@
 <img src="https://github.com/mckeonttemple/images/blob/gh-pages/tri_mark2.png?raw=true" alt="enter image description here"><br>
 Repeat the above QGIS step with Pennsylvania census tract data. You have the option of importing a Shapefile instead of a .csv file using the following link:</p>
 <blockquote>
-<p><a href="https://catalog.data.gov/dataset/tiger-line-shapefile-2016-state-pennsylvania-current-census-tract-state-based">https://catalog.data.gov/dataset/tiger-line-shapefile-2016-state-pennsylvania-current-census-tract-state-based</a></p>
+<p><a href="https://catalog.data.gov/dataset/tiger-line-shapefile-2016-state-pennsylvania-current-census-tract-state-based">https://catalog.data.gov/dataset/tiger-line-shapefile-2016-state-pennsylvania-current-census-tract-state-based</a>.</p>
 </blockquote>
 <p>A shapefile is a common spatial data format which you may encounter when working with other datasets.  If you download the shapefile, you will have a zipped folder containing several files. Keep this folder  zipped.  In QGIS go to <strong>Add Vector Layer</strong>  &gt; browse for the zipped folder, select it, and import it.</p>
 <p>Once completed, you should see the 3,218 census tracts which make up Pennsylvania.</p>
 <p><img src="https://github.com/mckeonttemple/images/blob/gh-pages/pa_census_tracts.png?raw=true" alt="enter image description here"></p>
-<p>Next setup DBeaver, a SQL client and database administration tool which we will use to manage the TRI data and create entity-relationship tables.  DBeaver is freely available through the following link:  <a href="http://dbeaver.io">dbeaver.io</a></p>
+<p>Next setup DBeaver, a SQL client and database administration tool which we will use to manage the TRI data and create entity-relationship tables.  DBeaver is freely available through the following link:  <a href="http://dbeaver.io">dbeaver.io</a>.</p>
 <p>Once DBeaver is setup, create a new database connection to PostgresSQL. PostgreSQL is a powerful open source object-relational database system which uses SQL as its coding language.  The first thing you’ll want to do is add the PostGIS extension. PostGIS is an open source software program that adds support for geographic objects to the PostgreSQL object-relational database.</p>
 <p>To do this, type the following code into DBeaver’s text editor:</p>
 <pre class=" language-sql"><code class="prism  language-sql"><span class="token keyword">create</span> extension postgis<span class="token punctuation">;</span>
@@ -257,8 +257,7 @@ underground_c_ll_v<span class="token punctuation">,</span> release_id <span clas
 <span class="token keyword">from</span> tri_pa_1987_2018 <span class="token keyword">as</span> <span class="token number">b</span><span class="token punctuation">;</span>
 </code></pre>
 <h2 id="spatial-queries">Spatial Queries</h2>
-<h3 id="you-are-now-ready-to-ask-an-endless-amount-of-spatial-queries.-work-through-the-following-four-examples.-once-completed-ready-through-the--postgis-documentation-and-try-out-new-functions-to-play-around-with-your-own-queries">You are now ready to ask an endless amount of spatial queries. Work through the following four examples. Once completed, ready through the  PostGIS documentation and try out new functions to play around with your own queries!</h3>
-<p>Ready?</p>
+<h3 id="you-are-now-ready-to-ask-an-endless-amount-of-spatial-queries.-work-through-the-following-four-examples.-once-completed-read-through-the--postgis-documentation-and-try-out-new-functions-to-play-around-with-your-own-queries">You are now ready to ask an endless amount of spatial queries. Work through the following four examples. Once completed, read through the  PostGIS documentation and try out new functions to play around with your own queries!</h3>
 <p><strong>Spatial Query 1</strong>:<br>
 For the year 1990, what chemicals in which census tracts, along with their TRIFD identifier, reported their max emission as greater than 1,000,000?</p>
 <h4 id="use-the-facility-and-release-tables-to-join-to-the-census-tract-table.-think-about-how-to-select-chemical-names-tri-emission-identifier--trifd--corresponding-pa-census-tract-year-and-emissions.">Use the facility and release tables to join to the Census Tract table. Think about how to select chemical names, TRI emission identifier ( trifd),  corresponding PA census tract, year, and emissions.</h4>
@@ -413,7 +412,7 @@ Perhaps you may be interested in knowing which  TRI emissions are near a census 
 <blockquote>
 <p><a href="https://www.sqlmvp.org/sql-server-profiler-trace/">https://www.sqlmvp.org/sql-server-profiler-trace/</a></p>
 </blockquote>
-<p>Either, way an index allows a query to search for data quickly by searching an index (part of the table) rather than the entire dataset.  To construct an index you’ll follow the following format:</p>
+<p>Either way,  an index allows a query to search data quickly by searching part of a table rather than the entire dataset.  Try constructing an index using the following format:</p>
 <pre class=" language-sql"><code class="prism  language-sql"><span class="token keyword">create</span> <span class="token keyword">index</span> index_name 
 <span class="token keyword">on</span> table_name<span class="token punctuation">(</span>column_to_index<span class="token punctuation">)</span><span class="token punctuation">;</span>
 </code></pre>
