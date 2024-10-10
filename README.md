@@ -1,7 +1,5 @@
 #Tutorial
 https://mckeont.github.io/Relational_SDD/ 
-
-
 This tutorial is meant to provide an example of how to design a relational spatial database for spatial querying through the use of freely available resources. All you will need is a computer, an internet connection, and some patience.
 In this exercise, you will learn how to use point-level data from the US- EPA’s Toxic Release Inventory Program ( TRI ) and join it by spatial location to polygon-level data of census tract boundaries from census.gov.
 
